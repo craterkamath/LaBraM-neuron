@@ -38,6 +38,7 @@ def get_args():
     parser.add_argument('--epochs', default=30, type=int)
     parser.add_argument('--update_freq', default=1, type=int)
     parser.add_argument('--save_ckpt_freq', default=5, type=int)
+    # parser.add_argument('--distributed', action="store_true")
 
     # robust evaluation
     parser.add_argument('--robust_test', default=None, type=str,
@@ -225,6 +226,11 @@ def get_dataset(args):
         ch_names = [name.split(' ')[-1].split('-')[0] for name in ch_names]
         args.nb_classes = 6
         metrics = ["accuracy", "balanced_accuracy", "cohen_kappa", "f1_weighted"]
+    elif args.dataset == "neuron":
+        train_dataset, test_dataset, val_dataset = utils.prepare_neuron_dataset("./dataset_maker/data.npy", "./dataset_maker/labels.npy")
+        args.nb_classes = 186
+        ch_names = ['P3', 'P1']
+        metrics = ["accuracy", "balanced_accuracy", "cohen_kappa", "f1_weighted"]
     return train_dataset, test_dataset, val_dataset, ch_names, metrics
 
 
@@ -255,7 +261,7 @@ def main(args, ds_init):
         dataset_val = None
         dataset_test = None
 
-    if True:  # args.distributed:
+    if True: #args.distributed:
         num_tasks = utils.get_world_size()
         global_rank = utils.get_rank()
         sampler_train = torch.utils.data.DistributedSampler(

@@ -29,6 +29,7 @@ from torch import inf
 import h5py
 
 from tensorboardX import SummaryWriter
+import torch.utils
 from data_processor.dataset import ShockDataset
 import pickle
 from scipy.signal import resample
@@ -37,6 +38,7 @@ import pandas as pd
 from sklearn.metrics import r2_score
 from sklearn.metrics import mean_squared_error
 from scipy.stats import pearsonr
+from sklearn.model_selection import train_test_split
 
 
 standard_1020 = [
@@ -755,7 +757,19 @@ class TUEVLoader(torch.utils.data.Dataset):
         Y = int(sample["label"][0] - 1)
         X = torch.FloatTensor(X)
         return X, Y
+
+class NeuronLoader(torch.utils.data.Dataset):
+    def __init__(self, data, labels):
+        self.data = data
+        self.labels = labels
     
+    def __len__(self):
+        return self.data.shape[0]
+    
+    def __getitem__(self, index):
+        X = torch.FloatTensor(np.array([self.data[index, :600].flatten(), self.data[index, :600].flatten()])) # Add extra axis since single channel
+        Y = int(self.labels[index])
+        return X, Y
 
 def prepare_TUEV_dataset(root):
     # set random seed
@@ -800,6 +814,16 @@ def prepare_TUAB_dataset(root):
     test_dataset = TUABLoader(os.path.join(root, "test"), test_files)
     val_dataset = TUABLoader(os.path.join(root, "val"), val_files)
     print(len(train_files), len(val_files), len(test_files))
+    return train_dataset, test_dataset, val_dataset
+
+def prepare_neuron_dataset(data_path, label_path):
+    data = np.load(data_path)
+    labels = np.load(label_path)
+    X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.8, stratify=labels, random_state=7)
+    train_dataset = NeuronLoader(X_train, y_train)
+    test_dataset = NeuronLoader(X_test, y_test)
+    val_dataset = NeuronLoader(X_test, y_test)
+    print(len(train_dataset), len(val_dataset), len(test_dataset))
     return train_dataset, test_dataset, val_dataset
 
 
